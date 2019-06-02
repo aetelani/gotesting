@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"time"
 )
 
 const (
@@ -46,6 +47,20 @@ func getMessage(i string) (string, bool) {
 	return i, false;
 } 
 
+func doChannelStuff(pinger chan string, done chan bool) {
+loop:
+	select {
+		case m := <-pinger:
+			if m == "quit" {
+				fmt.Println("Server goroutine exiting")
+				done <- true
+				return
+			}
+			fmt.Println("server:" + m)
+		}
+	goto loop
+}
+
 func main() {
 	l := local{Me: "Hellos"}
 	yep := fun(get42, 11, 22)
@@ -59,4 +74,29 @@ func main() {
 	for _, x := range []int{1,2,3} {
 		fmt.Println(x*2)
 	}
+	// Buffered channel for two messages
+	pinger := make(chan string)
+	exit := make(chan bool)
+	
+	go doChannelStuff(pinger, exit);
+
+	// Goroutine client
+	go func() {
+		roundsLeft := 3
+
+		for true {
+			// Delay client
+			time.Sleep(time.Second)
+			
+			if roundsLeft > 0 {
+				pinger <- "ping"
+				roundsLeft -= 1
+			} else { 
+				pinger <- "quit" 
+			}
+	}
+	}()
+	
+	<- exit
+	fmt.Println("exited")
 }
